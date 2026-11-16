@@ -357,6 +357,20 @@ static __always_inline const uint8_t *repeat_end(
 {
 	q += REPEAT_MIN;
 	r += REPEAT_MIN;
+	/*
+	 * First 8 bytes peeled off the loop: most matches end there, and a
+	 * branch of its own predicts that far better than the loop exit,
+	 * which also has to cover the long matches.
+	 */
+	{
+		const uint64_t x = read8_at(q) ^ read8_at(r);
+		if (x)
+			return r + ((uint16_t)__builtin_ctzl(x) >> BYTE_BITS_LOG2);
+		q += sizeof(uint64_t);
+		r += sizeof(uint64_t);
+		if (unlikely(r > in_end_safe))
+			goto tail;
+	}
 	/* An AVX2 32B-at-a-time vector compare lived here; removed after
 	 * it regressed the "exe" corpus 7-24% (see the top-of-file comment
 	 * for what that corpus really was) -- back to upstream LZ4KD's
@@ -371,6 +385,7 @@ static __always_inline const uint8_t *repeat_end(
 		q += sizeof(uint64_t);
 		r += sizeof(uint64_t);
 	} while (likely(r <= in_end_safe)); /* once, at input block end */
+tail:
 	while (r < in_end) {
 		if (*q != *r) return r;
 		++q;
