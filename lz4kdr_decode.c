@@ -58,6 +58,23 @@ enum {
 	R_COPY_DOUBLING_MIN = 64
 };
 
+/*
+ * Kept out of line: inlined, the compiler merges this variable-size copy
+ * with the fixed 16-byte one of the fast path into a single memcpy() call.
+ */
+static noinline bool out_non_repeat_exact(
+	uint8_t *out_at,
+	const uint8_t *in_at,
+	uint_fast32_t nr_bytes_max,
+	const uint8_t *const in_end,
+	const uint8_t *const out_end)
+{
+	if (in_at + nr_bytes_max > in_end || out_at + nr_bytes_max > out_end)
+		return false;
+	m_copy(out_at, in_at, nr_bytes_max);
+	return true;
+}
+
 static bool out_non_repeat(
 	const uint8_t **in_at,
 	uint8_t **out_at,
@@ -71,9 +88,8 @@ static bool out_non_repeat(
 		if (likely(*in_at <= in_end - NR_COPY_MIN &&
 			   *out_at <= out_end - NR_COPY_MIN))
 			m_copy(*out_at, *in_at, NR_COPY_MIN);
-		else if (in_copy_end <= in_end && out_copy_end <= out_end)
-			m_copy(*out_at, *in_at, nr_bytes_max);
-		else
+		else if (!out_non_repeat_exact(*out_at, *in_at, nr_bytes_max,
+					       in_end, out_end))
 			return false;
 	} else { /* nr_bytes_max>NR_COPY_MIN */
 		if (likely(in_copy_end <= in_end - NR_COPY_MIN &&
@@ -82,9 +98,8 @@ static bool out_non_repeat(
 			copy_x_while_lt(*out_at + NR_COPY_MIN,
 					*in_at + NR_COPY_MIN,
 					out_copy_end, NR_COPY_MIN);
-		} else if (in_copy_end <= in_end && out_copy_end <= out_end) {
-			m_copy(*out_at, *in_at, nr_bytes_max);
-		} else { /* in_copy_end > in_end || out_copy_end > out_end */
+		} else if (!out_non_repeat_exact(*out_at, *in_at, nr_bytes_max,
+						 in_end, out_end)) {
 			return false;
 		}
 	} /* if (nr_bytes_max <= NR_COPY_MIN) */
@@ -93,28 +108,28 @@ static bool out_non_repeat(
 	return true;
 }
 
-static void out_repeat_overlap(
+/*
+ * 1 <= offset < 8 && out_copy_end + R_COPY_SAFE_2X <= out_end.
+ * Build one period-aligned 8-byte pattern in a register and store it in
+ * steps of the largest multiple of offset that fits in 8 bytes. Copying
+ * from the bytes just written instead makes every load wait for stores it
+ * only partly overlaps. Writes at most 7 bytes past out_copy_end.
+ */
+static void out_repeat_short(
 	uint_fast32_t offset,
 	uint8_t *out_at,
 	const uint8_t *out_from,
 	const uint8_t *const out_copy_end)
 {
-	enum {
-		COPY_MIN = R_COPY_MIN >> 1,
-		OFFSET_LIMIT = COPY_MIN >> 1
-	};
-	m_copy_overlap(out_at, out_from, COPY_MIN);
-/* (1 < offset < R_COPY_MIN/2) && out_copy_end + R_COPY_SAFE_2X  <= out_end */
-	out_at += offset;
-	if (offset <= OFFSET_LIMIT)
-		offset <<= 1;
+	static const uint8_t step[8] = { 0, 8, 8, 6, 8, 5, 6, 7 };
+	uint64_t pattern = read8_at(out_from) & mask64(offset * BYTE_BITS);
+	uint_fast32_t k;
+	for (k = offset; k < 8; k <<= 1)
+		pattern |= pattern << (k * BYTE_BITS);
 	do {
-		m_copy_overlap(out_at, out_from, COPY_MIN);
-		out_at += offset;
-		if (offset <= OFFSET_LIMIT)
-			offset <<= 1;
-	} while (out_at - out_from < R_COPY_MIN);
-	while_lt_copy_2x_as_x2(out_at, out_from, out_copy_end, R_COPY_MIN);
+		m_copy(out_at, &pattern, sizeof(pattern));
+		out_at += step[offset];
+	} while (out_at < out_copy_end);
 }
 
 /* copy whole chunks only: nothing is written at or past dst_end */
@@ -159,8 +174,8 @@ static bool out_repeat_slow(
 	const uint8_t *const out_copy_end,
 	const uint8_t *const out_end)
 {
-	if (offset > 1 && out_copy_end <= out_end - R_COPY_SAFE_2X) {
-		out_repeat_overlap(offset, out_at, out_from, out_copy_end);
+	if (offset < 8 && out_copy_end <= out_end - R_COPY_SAFE_2X) {
+		out_repeat_short(offset, out_at, out_from, out_copy_end);
 	} else {
 		if (unlikely(out_copy_end > out_end))
 			return false;

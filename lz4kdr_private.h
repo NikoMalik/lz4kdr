@@ -26,6 +26,7 @@ typedef int64_t int_fast32_t;
 
 #define likely(x)   __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
+#define noinline __attribute__((__noinline__))
 
 #define EXPORT_SYMBOL(x)
 #define MODULE_LICENSE(x)

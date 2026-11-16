@@ -13,9 +13,9 @@
  * includes this header, so a version bump rebuilds just that one file.
  */
 
-#define LZ4KDR_PROGNAME	"LZ4KDR (speed-tuned LZ4KD derivative)"
-#define LZ4KDR_AUTHOR	"Masahito Suzuki"
+#define LZ4KDR_PROGNAME "LZ4KDR (speed-tuned LZ4KD derivative)"
+#define LZ4KDR_AUTHOR "Masahito Suzuki,NikoMalik"
 
-#define LZ4KDR_VERSION	"1.5"
+#define LZ4KDR_VERSION "1.5"
 
 #endif /* _LIB_LZ4KDR_VERSION_H */
