@@ -21,10 +21,10 @@
 #define _LZ4KDR_H
 
 typedef enum {
-	LZ4KDR_STATUS_INCOMPRESSIBLE =  0, /* data did not compress */
-	LZ4KDR_STATUS_FAILED         = -1, /* general failure */
-	LZ4KDR_STATUS_READ_ERROR     = -2, /* corrupt/truncated input */
-	LZ4KDR_STATUS_WRITE_ERROR    = -3
+    LZ4KDR_STATUS_INCOMPRESSIBLE = 0, /* data did not compress */
+    LZ4KDR_STATUS_FAILED = -1,        /* general failure */
+    LZ4KDR_STATUS_READ_ERROR = -2,    /* corrupt/truncated input */
+    LZ4KDR_STATUS_WRITE_ERROR = -3
 } lz4kdr_status;
 
 /*
@@ -52,12 +52,12 @@ unsigned lz4kdr_encode_state_bytes_min(void);
  * than this" threshold). 0 means "use min(in_max, out_max)".
  */
 int lz4kdr_encode(
-	void *const state,
-	const void *const in,
-	void *out,
-	unsigned in_max,
-	unsigned out_max,
-	unsigned out_limit);
+    void *const state,
+    const void *const in,
+    void *out,
+    unsigned in_max,
+    unsigned out_max,
+    unsigned out_limit);
 
 /*
  * lz4kdr_decode() reverses lz4kdr_encode() (and unmodified upstream
@@ -67,9 +67,9 @@ int lz4kdr_encode(
  * call) on success, or a negative lz4kdr_status on failure.
  */
 int lz4kdr_decode(
-	const void *const in,
-	void *const out,
-	unsigned in_max,
-	unsigned out_max);
+    const void *const in,
+    void *const out,
+    unsigned in_max,
+    unsigned out_max);
 
 #endif /* _LZ4KDR_H */

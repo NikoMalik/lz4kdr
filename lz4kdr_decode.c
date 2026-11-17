@@ -19,43 +19,41 @@
 #include "lz4kdr_private.h" /* types, etc */
 
 static const uint8_t *get_size(
-	uint_fast32_t *size,
-	const uint8_t *in_at,
-	const uint8_t *const in_end)
-{
-	uint_fast32_t u;
-	do {
-		if (unlikely(in_at >= in_end))
-			return NULL;
-		*size += (u = *(const uint8_t*)in_at);
-		++in_at;
-	} while (BYTE_MAX == u);
-	return in_at;
+    uint_fast32_t *size,
+    const uint8_t *in_at,
+    const uint8_t *const in_end) {
+    uint_fast32_t u;
+    do {
+        if (unlikely(in_at >= in_end))
+            return NULL;
+        *size += (u = *(const uint8_t *)in_at);
+        ++in_at;
+    } while (BYTE_MAX == u);
+    return in_at;
 }
 
 static int end_of_block(
-	const uint_fast32_t nr_bytes_max,
-	const uint_fast32_t r_bytes_max,
-	const uint8_t *const in_at,
-	const uint8_t *const in_end,
-	const uint8_t *const out,
-	const uint8_t *const out_at)
-{
-	if (!nr_bytes_max)
-		return LZ4KDR_STATUS_FAILED; /* should be the last one in block */
-	if (r_bytes_max != REPEAT_MIN)
-		return LZ4KDR_STATUS_FAILED; /* should be the last one in block */
-	if (in_at != in_end)
-		return LZ4KDR_STATUS_FAILED; /* should be the last one in block */
-	return (int)(out_at - out);
+    const uint_fast32_t nr_bytes_max,
+    const uint_fast32_t r_bytes_max,
+    const uint8_t *const in_at,
+    const uint8_t *const in_end,
+    const uint8_t *const out,
+    const uint8_t *const out_at) {
+    if (!nr_bytes_max)
+        return LZ4KDR_STATUS_FAILED; /* should be the last one in block */
+    if (r_bytes_max != REPEAT_MIN)
+        return LZ4KDR_STATUS_FAILED; /* should be the last one in block */
+    if (in_at != in_end)
+        return LZ4KDR_STATUS_FAILED; /* should be the last one in block */
+    return (int)(out_at - out);
 }
 
 enum {
-	NR_COPY_MIN = 16,
-	R_COPY_MIN = 16,
-	R_COPY_SAFE = R_COPY_MIN - 1,
-	R_COPY_SAFE_2X = (R_COPY_MIN << 1) - 1,
-	R_COPY_DOUBLING_MIN = 64
+    NR_COPY_MIN = 16,
+    R_COPY_MIN = 16,
+    R_COPY_SAFE = R_COPY_MIN - 1,
+    R_COPY_SAFE_2X = (R_COPY_MIN << 1) - 1,
+    R_COPY_DOUBLING_MIN = 64
 };
 
 /*
@@ -63,49 +61,47 @@ enum {
  * with the fixed 16-byte one of the fast path into a single memcpy() call.
  */
 static noinline bool out_non_repeat_exact(
-	uint8_t *out_at,
-	const uint8_t *in_at,
-	uint_fast32_t nr_bytes_max,
-	const uint8_t *const in_end,
-	const uint8_t *const out_end)
-{
-	if (in_at + nr_bytes_max > in_end || out_at + nr_bytes_max > out_end)
-		return false;
-	m_copy(out_at, in_at, nr_bytes_max);
-	return true;
+    uint8_t *out_at,
+    const uint8_t *in_at,
+    uint_fast32_t nr_bytes_max,
+    const uint8_t *const in_end,
+    const uint8_t *const out_end) {
+    if (in_at + nr_bytes_max > in_end || out_at + nr_bytes_max > out_end)
+        return false;
+    m_copy(out_at, in_at, nr_bytes_max);
+    return true;
 }
 
 static bool out_non_repeat(
-	const uint8_t **in_at,
-	uint8_t **out_at,
-	uint_fast32_t nr_bytes_max,
-	const uint8_t *const in_end,
-	const uint8_t *const out_end)
-{
-	const uint8_t *const in_copy_end = *in_at + nr_bytes_max;
-	uint8_t *const out_copy_end = *out_at + nr_bytes_max;
-	if (likely(nr_bytes_max <= NR_COPY_MIN)) {
-		if (likely(*in_at <= in_end - NR_COPY_MIN &&
-			   *out_at <= out_end - NR_COPY_MIN))
-			m_copy(*out_at, *in_at, NR_COPY_MIN);
-		else if (!out_non_repeat_exact(*out_at, *in_at, nr_bytes_max,
-					       in_end, out_end))
-			return false;
-	} else { /* nr_bytes_max>NR_COPY_MIN */
-		if (likely(in_copy_end <= in_end - NR_COPY_MIN &&
-			   out_copy_end <= out_end - NR_COPY_MIN)) {
-			m_copy(*out_at, *in_at, NR_COPY_MIN);
-			copy_x_while_lt(*out_at + NR_COPY_MIN,
-					*in_at + NR_COPY_MIN,
-					out_copy_end, NR_COPY_MIN);
-		} else if (!out_non_repeat_exact(*out_at, *in_at, nr_bytes_max,
-						 in_end, out_end)) {
-			return false;
-		}
-	} /* if (nr_bytes_max <= NR_COPY_MIN) */
-	*in_at = in_copy_end;
-	*out_at = out_copy_end;
-	return true;
+    const uint8_t **in_at,
+    uint8_t **out_at,
+    uint_fast32_t nr_bytes_max,
+    const uint8_t *const in_end,
+    const uint8_t *const out_end) {
+    const uint8_t *const in_copy_end = *in_at + nr_bytes_max;
+    uint8_t *const out_copy_end = *out_at + nr_bytes_max;
+    if (likely(nr_bytes_max <= NR_COPY_MIN)) {
+        if (likely(*in_at <= in_end - NR_COPY_MIN &&
+                   *out_at <= out_end - NR_COPY_MIN))
+            m_copy(*out_at, *in_at, NR_COPY_MIN);
+        else if (!out_non_repeat_exact(*out_at, *in_at, nr_bytes_max,
+                                       in_end, out_end))
+            return false;
+    } else { /* nr_bytes_max>NR_COPY_MIN */
+        if (likely(in_copy_end <= in_end - NR_COPY_MIN &&
+                   out_copy_end <= out_end - NR_COPY_MIN)) {
+            m_copy(*out_at, *in_at, NR_COPY_MIN);
+            copy_x_while_lt(*out_at + NR_COPY_MIN,
+                            *in_at + NR_COPY_MIN,
+                            out_copy_end, NR_COPY_MIN);
+        } else if (!out_non_repeat_exact(*out_at, *in_at, nr_bytes_max,
+                                         in_end, out_end)) {
+            return false;
+        }
+    } /* if (nr_bytes_max <= NR_COPY_MIN) */
+    *in_at = in_copy_end;
+    *out_at = out_copy_end;
+    return true;
 }
 
 /*
@@ -116,34 +112,32 @@ static bool out_non_repeat(
  * only partly overlaps. Writes at most 7 bytes past out_copy_end.
  */
 static void out_repeat_short(
-	uint_fast32_t offset,
-	uint8_t *out_at,
-	const uint8_t *out_from,
-	const uint8_t *const out_copy_end)
-{
-	static const uint8_t step[8] = { 0, 8, 8, 6, 8, 5, 6, 7 };
-	uint64_t pattern = read8_at(out_from) & mask64(offset * BYTE_BITS);
-	uint_fast32_t k;
-	for (k = offset; k < 8; k <<= 1)
-		pattern |= pattern << (k * BYTE_BITS);
-	do {
-		m_copy(out_at, &pattern, sizeof(pattern));
-		out_at += step[offset];
-	} while (out_at < out_copy_end);
+    uint_fast32_t offset,
+    uint8_t *out_at,
+    const uint8_t *out_from,
+    const uint8_t *const out_copy_end) {
+    static const uint8_t step[8] = {0, 8, 8, 6, 8, 5, 6, 7};
+    uint64_t pattern = read8_at(out_from) & mask64(offset * BYTE_BITS);
+    uint_fast32_t k;
+    for (k = offset; k < 8; k <<= 1)
+        pattern |= pattern << (k * BYTE_BITS);
+    do {
+        m_copy(out_at, &pattern, sizeof(pattern));
+        out_at += step[offset];
+    } while (out_at < out_copy_end);
 }
 
 /* copy whole chunks only: nothing is written at or past dst_end */
 inline static void copy_x_within(
-	uint8_t **dst,
-	const uint8_t **src,
-	const uint8_t *const dst_end,
-	const size_t copy_min)
-{
-	while (*dst + copy_min <= dst_end) {
-		m_copy(*dst, *src, copy_min);
-		*dst += copy_min;
-		*src += copy_min;
-	}
+    uint8_t **dst,
+    const uint8_t **src,
+    const uint8_t *const dst_end,
+    const size_t copy_min) {
+    while (*dst + copy_min <= dst_end) {
+        m_copy(*dst, *src, copy_min);
+        *dst += copy_min;
+        *src += copy_min;
+    }
 }
 
 /*
@@ -152,162 +146,156 @@ inline static void copy_x_within(
  * The two ranges never overlap, and nothing is written past dst + total.
  */
 static void copy_doubling(
-	uint8_t *dst,
-	const uint8_t *src,
-	size_t total)
-{
-	while (total > (size_t)(dst - src)) {
-		const size_t available = dst - src;
+    uint8_t *dst,
+    const uint8_t *src,
+    size_t total) {
+    while (total > (size_t)(dst - src)) {
+        const size_t available = dst - src;
 
-		m_copy(dst, src, available);
-		dst += available;
-		total -= available;
-	}
-	m_copy(dst, src, total);
+        m_copy(dst, src, available);
+        dst += available;
+        total -= available;
+    }
+    m_copy(dst, src, total);
 }
 
 static bool out_repeat_slow(
-	uint_fast32_t r_bytes_max,
-	uint_fast32_t offset,
-	uint8_t *out_at,
-	const uint8_t *out_from,
-	const uint8_t *const out_copy_end,
-	const uint8_t *const out_end)
-{
-	if (offset < 8 && out_copy_end <= out_end - R_COPY_SAFE_2X) {
-		out_repeat_short(offset, out_at, out_from, out_copy_end);
-	} else {
-		if (unlikely(out_copy_end > out_end))
-			return false;
-		if (offset == 1) {
-			m_set(out_at, *out_from, r_bytes_max);
-		} else {
-			/*
-			 * Too close to the end of the page for the paths that
-			 * copy past out_copy_end. A long match reaching the
-			 * end of the page gets here for its whole length, so
-			 * copy it in growing blocks, and a short one by chunks
-			 * as far as the offset allows.
-			 */
-			if (r_bytes_max >= R_COPY_DOUBLING_MIN) {
-				copy_doubling(out_at, out_from, r_bytes_max);
-				return true;
-			}
-			if (offset >= R_COPY_MIN)
-				copy_x_within(&out_at, &out_from, out_copy_end,
-					      R_COPY_MIN);
-			else if (offset >= (R_COPY_MIN >> 1))
-				copy_x_within(&out_at, &out_from, out_copy_end,
-					      R_COPY_MIN >> 1);
-			while (out_at < out_copy_end)
-				*out_at++ = *out_from++;
-		}
-	}
-	return true;
+    uint_fast32_t r_bytes_max,
+    uint_fast32_t offset,
+    uint8_t *out_at,
+    const uint8_t *out_from,
+    const uint8_t *const out_copy_end,
+    const uint8_t *const out_end) {
+    if (offset < 8 && out_copy_end <= out_end - R_COPY_SAFE_2X) {
+        out_repeat_short(offset, out_at, out_from, out_copy_end);
+    } else {
+        if (unlikely(out_copy_end > out_end))
+            return false;
+        if (offset == 1) {
+            m_set(out_at, *out_from, r_bytes_max);
+        } else {
+            /*
+             * Too close to the end of the page for the paths that
+             * copy past out_copy_end. A long match reaching the
+             * end of the page gets here for its whole length, so
+             * copy it in growing blocks, and a short one by chunks
+             * as far as the offset allows.
+             */
+            if (r_bytes_max >= R_COPY_DOUBLING_MIN) {
+                copy_doubling(out_at, out_from, r_bytes_max);
+                return true;
+            }
+            if (offset >= R_COPY_MIN)
+                copy_x_within(&out_at, &out_from, out_copy_end,
+                              R_COPY_MIN);
+            else if (offset >= (R_COPY_MIN >> 1))
+                copy_x_within(&out_at, &out_from, out_copy_end,
+                              R_COPY_MIN >> 1);
+            while (out_at < out_copy_end)
+                *out_at++ = *out_from++;
+        }
+    }
+    return true;
 }
 
 static int decode(
-	const uint8_t *in_at,
-	uint8_t *const out,
-	const uint8_t *const in_end,
-	const uint8_t *const out_end,
-	const uint_fast32_t nr_log2,
-	const uint_fast32_t off_log2)
-{
-	const uint_fast32_t r_log2 = TAG_BITS_MAX - (off_log2 + nr_log2);
-	const uint8_t *const in_end_minus_x = in_end - TAG_BYTES_MAX;
-	uint8_t *out_at = out;
-	while (likely(in_at <= in_end_minus_x)) {
-		const uint_fast32_t utag = read4_at(in_at - 1) >> BYTE_BITS;
-		const uint_fast32_t offset = utag & mask(off_log2);
-		uint_fast32_t nr_bytes_max = utag >> (off_log2 + r_log2),
-			      r_bytes_max = ((utag >> off_log2) & mask(r_log2)) +
-					    REPEAT_MIN;
-		const uint8_t *out_from = 0;
-		uint8_t *out_copy_end = 0;
-		const uint8_t *out_safe_end = 0;
-		in_at += TAG_BYTES_MAX;
-		if (unlikely(nr_bytes_max == mask(nr_log2))) {
-			in_at = get_size(&nr_bytes_max, in_at, in_end);
-			if (unlikely(in_at == NULL))
-				return LZ4KDR_STATUS_READ_ERROR;
-		}
-		if (!out_non_repeat(&in_at, &out_at, nr_bytes_max, in_end, out_end))
-			return LZ4KDR_STATUS_FAILED;
-		if (unlikely(r_bytes_max == mask(r_log2) + REPEAT_MIN)) {
-			in_at = get_size(&r_bytes_max, in_at, in_end);
-			if (unlikely(in_at == NULL))
-				return LZ4KDR_STATUS_READ_ERROR;
-		}
-		out_from = out_at - offset;
-		if (unlikely(out_from < out))
-			return LZ4KDR_STATUS_FAILED;
-		out_copy_end = out_at + r_bytes_max;
-		out_safe_end = out_end - R_COPY_SAFE_2X;
-		if (likely(offset >= R_COPY_MIN && out_copy_end <= out_safe_end)) {
-			copy_2x_as_x2_while_lt(out_at, out_from, out_copy_end,
-					       R_COPY_MIN);
-		} else if (likely(offset >= (R_COPY_MIN >> 1) &&
-				  out_copy_end <= out_safe_end)) {
-			m_copy_overlap(out_at, out_from, R_COPY_MIN);
-			out_at += offset;
-			while_lt_copy_x(out_at, out_from, out_copy_end, R_COPY_MIN);
-		} else if (likely(offset > 0)) {
-			if (!out_repeat_slow(r_bytes_max, offset, out_at, out_from,
-			     out_copy_end, out_end))
-				return LZ4KDR_STATUS_FAILED;
-		} else { /* offset == 0: EOB, last literal */
-			return end_of_block(nr_bytes_max, r_bytes_max, in_at,
-					    in_end, out, out_at);
-		}
-		out_at = out_copy_end;
-	} /* while (likely(in_at <= in_end_minus_x)) */
-	return in_at == in_end ? (int)(out_at - out) : LZ4KDR_STATUS_FAILED;
+    const uint8_t *in_at,
+    uint8_t *const out,
+    const uint8_t *const in_end,
+    const uint8_t *const out_end,
+    const uint_fast32_t nr_log2,
+    const uint_fast32_t off_log2) {
+    const uint_fast32_t r_log2 = TAG_BITS_MAX - (off_log2 + nr_log2);
+    const uint8_t *const in_end_minus_x = in_end - TAG_BYTES_MAX;
+    uint8_t *out_at = out;
+    while (likely(in_at <= in_end_minus_x)) {
+        const uint_fast32_t utag = read4_at(in_at - 1) >> BYTE_BITS;
+        const uint_fast32_t offset = utag & mask(off_log2);
+        uint_fast32_t nr_bytes_max = utag >> (off_log2 + r_log2),
+                      r_bytes_max = ((utag >> off_log2) & mask(r_log2)) +
+                                    REPEAT_MIN;
+        const uint8_t *out_from = 0;
+        uint8_t *out_copy_end = 0;
+        const uint8_t *out_safe_end = 0;
+        in_at += TAG_BYTES_MAX;
+        if (unlikely(nr_bytes_max == mask(nr_log2))) {
+            in_at = get_size(&nr_bytes_max, in_at, in_end);
+            if (unlikely(in_at == NULL))
+                return LZ4KDR_STATUS_READ_ERROR;
+        }
+        if (!out_non_repeat(&in_at, &out_at, nr_bytes_max, in_end, out_end))
+            return LZ4KDR_STATUS_FAILED;
+        if (unlikely(r_bytes_max == mask(r_log2) + REPEAT_MIN)) {
+            in_at = get_size(&r_bytes_max, in_at, in_end);
+            if (unlikely(in_at == NULL))
+                return LZ4KDR_STATUS_READ_ERROR;
+        }
+        out_from = out_at - offset;
+        if (unlikely(out_from < out))
+            return LZ4KDR_STATUS_FAILED;
+        out_copy_end = out_at + r_bytes_max;
+        out_safe_end = out_end - R_COPY_SAFE_2X;
+        if (likely(offset >= R_COPY_MIN && out_copy_end <= out_safe_end)) {
+            copy_2x_as_x2_while_lt(out_at, out_from, out_copy_end,
+                                   R_COPY_MIN);
+        } else if (likely(offset >= (R_COPY_MIN >> 1) &&
+                          out_copy_end <= out_safe_end)) {
+            m_copy_overlap(out_at, out_from, R_COPY_MIN);
+            out_at += offset;
+            while_lt_copy_x(out_at, out_from, out_copy_end, R_COPY_MIN);
+        } else if (likely(offset > 0)) {
+            if (!out_repeat_slow(r_bytes_max, offset, out_at, out_from,
+                                 out_copy_end, out_end))
+                return LZ4KDR_STATUS_FAILED;
+        } else { /* offset == 0: EOB, last literal */
+            return end_of_block(nr_bytes_max, r_bytes_max, in_at,
+                                in_end, out, out_at);
+        }
+        out_at = out_copy_end;
+    } /* while (likely(in_at <= in_end_minus_x)) */
+    return in_at == in_end ? (int)(out_at - out) : LZ4KDR_STATUS_FAILED;
 }
 
 static int decode_pattern_4kb(
-	const uint8_t *const in,
-	uint8_t *const out,
-	const uint8_t *const out_end)
-{
-	const uint64_t pattern = *(const uint64_t*)in;
-	uint64_t *o64 = (uint64_t*)out;
-	const uint64_t *const o64_end = (const uint64_t*)out_end - 1;
-	for (; o64 <= o64_end; ++o64)
-	  *o64 = pattern;
-	return (uint8_t*)o64 == out_end ? (int)(out_end - out) : LZ4KDR_STATUS_FAILED;
+    const uint8_t *const in,
+    uint8_t *const out,
+    const uint8_t *const out_end) {
+    const uint64_t pattern = *(const uint64_t *)in;
+    uint64_t *o64 = (uint64_t *)out;
+    const uint64_t *const o64_end = (const uint64_t *)out_end - 1;
+    for (; o64 <= o64_end; ++o64)
+        *o64 = pattern;
+    return (uint8_t *)o64 == out_end ? (int)(out_end - out) : LZ4KDR_STATUS_FAILED;
 }
 
 static int decode_4kb(
-	const uint8_t *const in,
-	uint8_t *const out,
-	const uint8_t *const in_end,
-	const uint8_t *const out_end)
-{
-	return decode(in, out, in_end, out_end, NR_4KB_LOG2, BLOCK_4KB_LOG2);
+    const uint8_t *const in,
+    uint8_t *const out,
+    const uint8_t *const in_end,
+    const uint8_t *const out_end) {
+    return decode(in, out, in_end, out_end, NR_4KB_LOG2, BLOCK_4KB_LOG2);
 }
 
 int lz4kdr_decode(
-	const void *in,
-	void *const out,
-	unsigned in_max,
-	unsigned out_max)
-{
-	/* ++use volatile pointers to prevent compiler optimizations */
-	const uint8_t *volatile in_end = (const uint8_t*)in + in_max;
-	const uint8_t *volatile out_end = (uint8_t*)out + min_u64(out_max, 1 << BLOCK_4KB_LOG2);
-	if (unlikely(in == NULL || out == NULL))
-		return LZ4KDR_STATUS_FAILED;
-	if (unlikely(in_max <= 1 + TAG_BYTES_MAX || out_max <= 0))
-		return LZ4KDR_STATUS_FAILED;
-	/* invalid buffer size or pointer overflow */
-	if (unlikely((const uint8_t*)in >= in_end || (uint8_t*)out >= out_end))
-		return LZ4KDR_STATUS_FAILED;
-	/* -- */
-	if (unlikely(in_max == PATTERN_BYTES_MAX))
-		return decode_pattern_4kb((const uint8_t*)in, (uint8_t*)out,
-				out_end);
-	return decode_4kb((const uint8_t*)in + 1, (uint8_t*)out, in_end, out_end);
+    const void *in,
+    void *const out,
+    unsigned in_max,
+    unsigned out_max) {
+    /* ++use volatile pointers to prevent compiler optimizations */
+    const uint8_t *volatile in_end = (const uint8_t *)in + in_max;
+    const uint8_t *volatile out_end = (uint8_t *)out + min_u64(out_max, 1 << BLOCK_4KB_LOG2);
+    if (unlikely(in == NULL || out == NULL))
+        return LZ4KDR_STATUS_FAILED;
+    if (unlikely(in_max <= 1 + TAG_BYTES_MAX || out_max <= 0))
+        return LZ4KDR_STATUS_FAILED;
+    /* invalid buffer size or pointer overflow */
+    if (unlikely((const uint8_t *)in >= in_end || (uint8_t *)out >= out_end))
+        return LZ4KDR_STATUS_FAILED;
+    /* -- */
+    if (unlikely(in_max == PATTERN_BYTES_MAX))
+        return decode_pattern_4kb((const uint8_t *)in, (uint8_t *)out,
+                                  out_end);
+    return decode_4kb((const uint8_t *)in + 1, (uint8_t *)out, in_end, out_end);
 }
 EXPORT_SYMBOL(lz4kdr_decode);
 
