@@ -21,12 +21,15 @@
 #include <stdbool.h>
 #include <string.h>
 
-typedef uint64_t uint_fast32_t;
-typedef int64_t int_fast32_t;
+#define uint_fast32_t uint64_t
+#define int_fast32_t int64_t
 
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 #define noinline __attribute__((__noinline__))
+#ifndef __always_inline
+#define __always_inline inline __attribute__((__always_inline__))
+#endif
 
 #define EXPORT_SYMBOL(x)
 #define MODULE_LICENSE(x)
@@ -62,7 +65,6 @@ enum {
     BLOCK_8KB_LOG2 = 13,
     NR_8KB_LOG2 = 5, /* for encoded_bytes_max */
     NR_4KB_LOG2 = 6,
-    PATTERN_BYTES_MAX = 8 /* 1 bytes for header, 8 bytes for pattern */
 };
 
 inline static uint32_t mask(uint_fast32_t log2) {

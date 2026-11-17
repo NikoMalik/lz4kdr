@@ -2,7 +2,7 @@
 
 userspace port of lz4kdr,a speed tuned derivative of huawei's LZ4KD that i use as the zram compressor in my kernel
 
-it compresses one independent block of up to 4 KiB per call,4 KiB pages are what it is built for. the on-wire format is unchanged LZ4KD,so data from the original LZ4KD encoder decodes here and the other way around
+it compresses one independent block of up to 4 KiB per call,4 KiB pages are what it is built for. the on-wire format is LZ4KD without its 8 byte pattern pages,so data from the original LZ4KD encoder decodes here unless it is a pattern page,and the other way around
 
 ## when to use it instead of lz4
 

@@ -42,6 +42,13 @@ static void check(const uint8_t *in, unsigned n, const char *what)
 			printf("FAIL %s size %u: encoded %d decoded %d\n", what, n, c, d);
 			failures++;
 		}
+		uint8_t *wide = malloc(4096);
+		d = lz4kdr_decode(out, wide, (unsigned)c, 4096);
+		if (d != (int)n || memcmp(wide, in, n)) {
+			printf("FAIL %s size %u: encoded %d decoded into 4096 %d\n", what, n, c, d);
+			failures++;
+		}
+		free(wide);
 		for (int k = 0; k < 64; k++) {
 			out[rnd() % (unsigned)c] ^= (uint8_t)(1 + rnd() % 255);
 			lz4kdr_decode(out, back, (unsigned)c, n);
@@ -67,6 +74,14 @@ int main(void)
 				check(p, sizes[s], names[kind]);
 				free(p);
 			}
+	for (unsigned period = 1; period <= 16; period++)
+		for (unsigned n = 1; n <= 4096; n++) {
+			uint8_t *p = malloc(n);
+			for (unsigned i = 0; i < n; i++)
+				p[i] = i < period ? rnd() : p[i - period];
+			check(p, n, "short period");
+			free(p);
+		}
 	printf("%s, %d failures\n", failures ? "FAILED" : "ok", failures);
 	return failures != 0;
 }

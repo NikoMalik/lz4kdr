@@ -256,18 +256,6 @@ static int decode(
     return in_at == in_end ? (int)(out_at - out) : LZ4KDR_STATUS_FAILED;
 }
 
-static int decode_pattern_4kb(
-    const uint8_t *const in,
-    uint8_t *const out,
-    const uint8_t *const out_end) {
-    const uint64_t pattern = *(const uint64_t *)in;
-    uint64_t *o64 = (uint64_t *)out;
-    const uint64_t *const o64_end = (const uint64_t *)out_end - 1;
-    for (; o64 <= o64_end; ++o64)
-        *o64 = pattern;
-    return (uint8_t *)o64 == out_end ? (int)(out_end - out) : LZ4KDR_STATUS_FAILED;
-}
-
 static int decode_4kb(
     const uint8_t *const in,
     uint8_t *const out,
@@ -292,9 +280,6 @@ int lz4kdr_decode(
     if (unlikely((const uint8_t *)in >= in_end || (uint8_t *)out >= out_end))
         return LZ4KDR_STATUS_FAILED;
     /* -- */
-    if (unlikely(in_max == PATTERN_BYTES_MAX))
-        return decode_pattern_4kb((const uint8_t *)in, (uint8_t *)out,
-                                  out_end);
     return decode_4kb((const uint8_t *)in + 1, (uint8_t *)out, in_end, out_end);
 }
 EXPORT_SYMBOL(lz4kdr_decode);
