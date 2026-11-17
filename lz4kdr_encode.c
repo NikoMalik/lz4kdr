@@ -382,12 +382,6 @@ const uint8_t *lz4kdr_repeat_end(
     return repeat_end(q, r, in_end_safe, in_end);
 }
 
-/* CR increase order: +STEP, have OFFSETS, use _5b(most impact) */
-/* *_6b to compete with LZ4 */
-inline static uint_fast32_t hash(const uint8_t *r) {
-    return hash64_5b(r, HT_LOG2);
-}
-
 /*
  * Proof that 'r' increments are safe-NO pointer overflows are possible:
  *
@@ -450,10 +444,7 @@ static int encode_any(
              * (v>>8)'s low 5 bytes = r[1..6) hash position r+1 --
              * one load instead of two, and both ht[] loads/hashes
              * can issue back to back instead of waiting on the
-             * first equal4pv(). This bypasses hash()/hashed()
-             * entirely for the probe loop; hash() is still used
-             * once per match below (ht[hash(r - 1)]), just far
-             * less often than it was called here.
+             * first equal4pv(). This bypasses hashed() entirely.
              */
             {
                 const uint64_t v = read8_at(r);
@@ -488,7 +479,12 @@ static int encode_any(
         if (unlikely((r += r_bytes_max) > in_end_safe))
             return out_tail2(out_at, out_end, out, r, in_end,
                              NR_LOG2, OFF_LOG2);
-        ht[hash(r - 1)] = (uint16_t)(r - 1 - in0);
+        /*
+         * No ht[] insert for the last byte of the match: in a
+         * 1024-entry table it mostly evicts entries the probe loop
+         * would have found, and its extra load and multiply cost
+         * about 12% of the encoder.
+         */
     }
 }
 
