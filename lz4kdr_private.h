@@ -212,7 +212,8 @@ inline static uint_fast32_t hash32(const uint8_t *r, uint32_t shift)
 
 inline static uint_fast32_t hash64v_5b(const uint64_t r, uint32_t shift)
 {
-	const uint64_t m = 889523592379ULL;
+	/* FxHash constant, fewer collisions in the 1024-entry table */
+	const uint64_t m = 0x517cc1b727220a95ULL;
 	const uint64_t up_shift = 24;
 	return (uint32_t)(((r << up_shift) * m) >> (DWORD_BITS - shift));
 }
